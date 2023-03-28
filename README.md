@@ -13,7 +13,7 @@ Comming soon.
 
 ## Acknowledgements
 
-This repo benefits from [Point-MAE](https://github.com/Pang-Yatian/Point-MAE), [ACT] (https://github.com/RunpeiDong/ACT), [VPT] (https://github.com/KMnP/vpt), and [DGCNN] (https://github.com/WangYueFt/dgcnn). Thanks for their wonderful works.
+This repo benefits from [Point-MAE](https://github.com/Pang-Yatian/Point-MAE), [ACT](https://github.com/RunpeiDong/ACT), [VPT](https://github.com/KMnP/vpt), and [DGCNN](https://github.com/WangYueFt/dgcnn). Thanks for their wonderful works.
 
 ## Contact
 
