@@ -1,5 +1,7 @@
 # IDPT: Instance-aware Dynamic Prompt Tuning for Pre-trained Point Cloud Models.
-
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/instance-aware-dynamic-prompt-tuning-for-pre/3d-point-cloud-classification-on-modelnet40)](https://paperswithcode.com/sota/3d-point-cloud-classification-on-modelnet40?p=instance-aware-dynamic-prompt-tuning-for-pre)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/instance-aware-dynamic-prompt-tuning-for-pre/3d-point-cloud-classification-on-scanobjectnn)](https://paperswithcode.com/sota/3d-point-cloud-classification-on-scanobjectnn?p=instance-aware-dynamic-prompt-tuning-for-pre)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/instance-aware-dynamic-prompt-tuning-for-pre/few-shot-3d-point-cloud-classification-on-1)](https://paperswithcode.com/sota/few-shot-3d-point-cloud-classification-on-1?p=instance-aware-dynamic-prompt-tuning-for-pre)
 
 Official implementation of [**Instance-aware Dynamic Prompt Tuning for Pre-trained Point Cloud Models**](https://arxiv.org/abs/2304.07221).
 
