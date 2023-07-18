@@ -152,10 +152,7 @@ CUDA_VISIBLE_DEVICES=<GPUs> python main.py --config cfgs/fewshot_idpt.yaml --fin
 Part segmentation on ShapeNetPart, run:
 ```
 cd segmentation
-```
 
-IDPT:
-```
 python main.py --model prompt_pt3 --optimizer_part only_new --ckpts <path/to/pre-trained/model> --root path/to/data --learning_rate 0.0002 --epoch 300
 (CUDA_VISIBLE_DEVICES=3 python main.py --model prompt_pt3 --optimizer_part only_new --ckpts ../checkpoint/pretrain/mae/ckpt-last.pth --root ../data/shapenetcore_partanno_segmentation_benchmark_v0_normal/ --log_dir seg_idpt --learning_rate 0.0002 --epoch 300)
 ```
