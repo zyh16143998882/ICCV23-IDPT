@@ -1,9 +1,13 @@
 # IDPT: Instance-aware Dynamic Prompt Tuning for Pre-trained Point Cloud Models.
 
 
-Official implementation of [**Instance-aware Dynamic Prompt Tuning for Pre-trained Point Cloud Models**](https://arxiv.org/abs/2304.07221)
+Official implementation of [**Instance-aware Dynamic Prompt Tuning for Pre-trained Point Cloud Models**](https://arxiv.org/abs/2304.07221).
 
 🎉 Our paper IDPT has been accepted by **ICCV 2023** 🎉.
+
+
+## 0. Introduction
+
 
 ![img.png](figure/framework.png)
 
