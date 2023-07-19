@@ -242,7 +242,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/fewshot_idpt.yaml --finetune
 
 ### 4.3 Part Segmentation on ShapeNet-Part
 
-<details><summary>VPT-Deep (click to expand 👈)</summary>
+<details><summary>IDPT (click to expand 👈)</summary>
 
 ```python
 cd segmentation
