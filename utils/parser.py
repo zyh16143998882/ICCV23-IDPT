@@ -39,6 +39,11 @@ def get_args():
         default=False,
         help = 'vote acc')
     parser.add_argument(
+        '--tsne',
+        action='store_true',
+        default=False,
+        help='tsne vis')
+    parser.add_argument(
         '--resume', 
         action='store_true', 
         default=False, 

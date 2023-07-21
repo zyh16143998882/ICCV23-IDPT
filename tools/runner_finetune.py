@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -11,6 +13,8 @@ import numpy as np
 from datasets import data_transforms
 from pointnet2_ops import pointnet2_utils
 from torchvision import transforms
+from sklearn.manifold import TSNE
+from matplotlib import pyplot as plt
 
 
 train_transforms = transforms.Compose(
@@ -489,3 +493,91 @@ def test_vote(base_model, test_dataloader, epoch, val_writer, args, config, logg
     # print_log('[TEST] acc = %.4f' % acc, logger=logger)
     
     return acc
+
+
+def plot_embedding(data, label, title, category_nums):
+    TSNE_PATH = "./vis/tsne/"
+    colors = []
+    if category_nums > 27:
+        base = [0,0.3,0.6,0.9]
+    else:
+        base = [0,0.5,0.9]
+    for i in range(len(base)):
+        for j in range(len(base)):
+            for k in range(len(base)):
+                colors.append([base[i],base[j],base[k],1])
+
+    x_min, x_max = np.min(data, 0), np.max(data, 0)
+    data = (data - x_min) / (x_max - x_min)
+
+    fig = plt.figure(figsize=(8, 8))
+    for i in range(data.shape[0]):
+        print(colors[int(label[i])])
+        plt.text(data[i, 0], data[i, 1], str(label[i]),
+                 color=colors[int(label[i])],
+                 fontdict={'weight': 'bold', 'size': 9})
+    plt.xticks([])
+    plt.yticks([])
+    plt.title(title)
+
+    if not os.path.isdir(TSNE_PATH):
+        os.makedirs(TSNE_PATH)
+    plt.savefig(TSNE_PATH+"tsne.png")
+    return fig
+
+def test_only_tsne(base_model, test_dataloader, args, config, logger=None):
+    base_model.eval()  # set model to eval mode
+
+    test_pred = []
+    test_label = []
+    test_feature = []
+    npoints = config.npoints
+
+    with torch.no_grad():
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(test_dataloader):
+            # get_local.clear()
+            points = data[0].cuda()
+            label = data[1].cuda()
+
+            points = misc.fps(points, npoints)
+
+            _,concat_f = base_model(points)
+
+            target = label.view(-1)
+
+            test_label.append(target.detach())
+            test_feature.append(concat_f.detach())
+
+        test_label = torch.cat(test_label, dim=0)
+
+        category_nums = config.model.cls_dim
+
+        index = test_label < category_nums
+        label_all = test_label[index]
+        test_feature = torch.cat(test_feature, dim=0)
+        test_feature = test_feature[index]
+
+        # tsne
+        test_feature = test_feature.cpu().numpy()
+        label = label_all.cpu().numpy()
+
+        tsne = TSNE(n_components=2, init='pca', random_state=0)
+        result = tsne.fit_transform(test_feature.squeeze())
+
+        fig = plot_embedding(result, label, '', category_nums)
+
+def test_tsne(args, config):
+    logger = get_logger(args.log_name)
+    print_log('Tester start ... ', logger=logger)
+    _, test_dataloader = builder.dataset_builder(args, config.dataset.val)
+    base_model = builder.model_builder(config.model)
+    # load checkpoints
+    builder.load_model(base_model, args.ckpts, logger=logger)  # for finetuned transformer
+    if args.use_gpu:
+        base_model.to(args.local_rank)
+
+    #  DDP
+    if args.distributed:
+        raise NotImplementedError()
+
+    test_only_tsne(base_model, test_dataloader, args, config, logger=logger)

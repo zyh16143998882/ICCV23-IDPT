@@ -300,7 +300,31 @@ python parse_test_res.py ./experiments/all/fewshot --multi-exp --few-shot
 ```
 </details>
 
-## 6. Bibliography
+## 6. t-SNE visualization
+We used t-SNE to visualize the results obtained by IDPT on the ModelNet40 and ScanObjectNN test sets. The execution commands are as follows:
+```python
+CUDA_VISIBLE_DEVICES=<GPU> python main.py --tsne --config <yaml_file_name> --exp_name <output_file_name> --ckpts <path/to/ckpt>
+```
+<details><summary>For example, click to expand 👈</summary>
+
+```python
+# t-SNE on ScanObjectNN (PB-T50-RS)
+CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/tsne/finetune_scan_hardest_idpt_tsne.yaml --ckpts ./checkpoint/hardest/ckpt-best.pth --tsne --exp_name hard_test_tsne
+
+# object classification on ScanObjectNN (OBJ-BG)
+CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/tsne/finetune_scan_objbg_idpt_tsne.yaml --ckpts ./checkpoint/bg/ckpt-best.pth --tsne --exp_name bg_test_tsne
+
+# object classification on ScanObjectNN (OBJ-ONLY)
+CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/tsne/finetune_scan_objonly_idpt_tsne.yaml --ckpts ./checkpoint/only/ckpt-best.pth --tsne --exp_name only_test_tsne
+
+# object classification on ModelNet40 
+CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/tsne/finetune_modelnet_idpt_tsne.yaml --ckpts ./checkpoint/modelnet40/ckpt-best.pth --tsne --exp_name model_test_tsne
+```
+</details>
+
+You can also modify the code yourself to implement a customized t-SNE visualization. 🤗
+
+## 7. Bibliography
 If you find this code useful or use the toolkit in your work, please consider citing:
 ```
 @inproceedings{zha2023_IDPT,
@@ -312,9 +336,9 @@ If you find this code useful or use the toolkit in your work, please consider ci
 ```
 
 
-## 7. Acknowledgements
+## 8. Acknowledgements
 
 Our codes are built upon [Point-MAE](https://github.com/Pang-Yatian/Point-MAE), [Point-BERT](https://github.com/lulutang0608/Point-BERT), [ACT](https://github.com/RunpeiDong/ACT), [DGCNN](https://github.com/WangYueFt/dgcnn) and [VPT](https://github.com/KMnP/vpt). Thanks for their efforts.
 
-## 8. Contact
+## 9. Contact
 If you have any question, you can raise an issue or email Yaohua Zha (chayh21@mails.tsinghua.edu.cn) and Jinpeng Wang (wjp20@mails.tsinghua.edu.cn). We will reply you soon.

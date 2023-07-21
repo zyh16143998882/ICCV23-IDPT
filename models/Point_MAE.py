@@ -1121,6 +1121,176 @@ class PointTransformer(nn.Module):
         return ret
 
 @MODELS.register_module()
+class PointTransformerTSNE(nn.Module):
+    def __init__(self, config, **kwargs):
+        super().__init__()
+        self.config = config
+
+        self.trans_dim = config.trans_dim
+        self.depth = config.depth
+        self.drop_path_rate = config.drop_path_rate
+        self.cls_dim = config.cls_dim
+        self.num_heads = config.num_heads
+
+        self.group_size = config.group_size
+        self.num_group = config.num_group
+        self.encoder_dims = config.encoder_dims
+        #
+        self.prompt_layer = config.prompt_layer
+        self.prompt_module = config.prompt_module
+        self.cls_type = config.cls_type
+        self.CHANNEL_NUM = 1
+        if self.cls_type =="all":
+            self.CHANNEL_NUM = 3
+        elif self.cls_type =="promptcls" or self.cls_type =="pointcls":
+            self.CHANNEL_NUM = 2
+
+        self.group_divider = Group(num_group=self.num_group, group_size=self.group_size)
+
+        self.encoder = Encoder(encoder_channel=self.encoder_dims)
+
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, self.trans_dim))
+        self.cls_pos = nn.Parameter(torch.randn(1, 1, self.trans_dim))
+        self.prompt_pos = nn.Parameter(torch.randn(1, 1, self.trans_dim))
+
+        self.pos_embed = nn.Sequential(
+            nn.Linear(3, 128),
+            nn.GELU(),
+            nn.Linear(128, self.trans_dim)
+        )
+
+        dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth)]
+        # self.blocks = TransformerPromptEncoderLayerIOld(
+        self.blocks = TransformerPromptEncoderLayerI(
+            embed_dim=self.trans_dim,
+            depth=self.depth,
+            drop_path_rate=dpr,
+            num_heads=self.num_heads,
+            num_group=self.num_group,
+            prompt_layer=self.prompt_layer,
+            prompt_module = self.prompt_module,
+        )
+
+        self.norm = nn.LayerNorm(self.trans_dim)
+
+        self.cls_head_finetune = nn.Sequential(
+            # nn.Linear(self.trans_dim * 2, 256),
+            nn.Linear(self.trans_dim * self.CHANNEL_NUM, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(256, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(256, self.cls_dim)
+        )
+
+        self.build_loss_func()
+
+        trunc_normal_(self.cls_token, std=.02)
+        trunc_normal_(self.cls_pos, std=.02)
+        trunc_normal_(self.prompt_pos, std=.02)
+
+
+
+
+
+    def build_loss_func(self):
+        self.loss_ce = nn.CrossEntropyLoss()
+
+    def get_loss_acc(self, ret, gt):
+        loss = self.loss_ce(ret, gt.long())
+        pred = ret.argmax(-1)
+        acc = (pred == gt).sum() / float(gt.size(0))
+        return loss, acc * 100
+
+    def load_model_from_ckpt(self, bert_ckpt_path):
+        if bert_ckpt_path is not None:
+            ckpt = torch.load(bert_ckpt_path)
+            base_ckpt = {k.replace("module.", ""): v for k, v in ckpt['base_model'].items()}
+
+            for k in list(base_ckpt.keys()):
+                if k.startswith('MAE_encoder'):
+                    base_ckpt[k[len('MAE_encoder.'):]] = base_ckpt[k]
+                    del base_ckpt[k]
+                elif k.startswith('base_model'):
+                    base_ckpt[k[len('base_model.'):]] = base_ckpt[k]
+                    del base_ckpt[k]
+
+            incompatible = self.load_state_dict(base_ckpt, strict=False)
+
+            if incompatible.missing_keys:
+                print_log('missing_keys', logger='Transformer')
+                print_log(
+                    get_missing_parameters_message(incompatible.missing_keys),
+                    logger='Transformer'
+                )
+            if incompatible.unexpected_keys:
+                print_log('unexpected_keys', logger='Transformer')
+                print_log(
+                    get_unexpected_parameters_message(incompatible.unexpected_keys),
+                    logger='Transformer'
+                )
+
+            print_log(f'[Transformer] Successful Loading the ckpt from {bert_ckpt_path}', logger='Transformer')
+        else:
+            print_log('Training from scratch!!!', logger='Transformer')
+            self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv1d):
+            trunc_normal_(m.weight, std=.02)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Conv2d):
+            trunc_normal_(m.weight, std=.02)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm1d):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+
+    def forward(self, pts):
+        neighborhood, center = self.group_divider(pts)
+        group_input_tokens = self.encoder(neighborhood)  # B G N
+
+        cls_tokens = self.cls_token.expand(group_input_tokens.size(0), -1, -1)
+        cls_pos = self.cls_pos.expand(group_input_tokens.size(0), -1, -1)
+        cls_prompt_pos = self.prompt_pos.expand(group_input_tokens.size(0), -1, -1)
+
+        pos = self.pos_embed(center)
+
+        x = torch.cat((cls_tokens, group_input_tokens), dim=1)
+        pos = torch.cat((cls_pos, cls_prompt_pos, pos), dim=1)
+
+        # transformer
+        x= self.blocks(x, pos)
+        x = self.norm(x)  # torch.Size([32, 65, 384])
+
+        if self.cls_type == "promptonly":
+            concat_f = torch.cat([x[:, 1]], dim=-1)
+        elif self.cls_type == "promptcls":
+            concat_f = torch.cat([x[:, 0], x[:, 1]], dim=-1)
+        elif self.cls_type == "pointcls":
+            concat_f = torch.cat([x[:, 0], x[:, 2:].max(1)[0]], dim=-1)
+        else:
+            concat_f = torch.cat([x[:, 0], x[:, 1], x[:, 2:].max(1)[0]], dim=-1)
+        ret = self.cls_head_finetune(concat_f)
+
+        return ret, concat_f
+
+@MODELS.register_module()
 class PointTransformerPromptDeep(nn.Module):
     def __init__(self, config, **kwargs):
         super().__init__()
