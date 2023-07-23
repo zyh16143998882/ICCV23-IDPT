@@ -163,11 +163,22 @@ class BlockAdapter(nn.Module):
         self.attn = Attention(
             dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
 
-
-        self.adapter_downsample_cls = nn.Conv1d(dim, dim//2, kernel_size=1, bias=False)
-        self.adapter_upsample_cls = nn.Conv1d(dim//2, dim, kernel_size=1, bias=False)
+        self.adapter_downsample_cls = nn.Linear(
+            dim,
+            dim // 2
+        )
+        self.adapter_upsample_cls = nn.Linear(
+            dim // 2,
+            dim
+        )
 
         self.adapter_act_fn_cls = act_layer()
+
+        nn.init.zeros_(self.adapter_downsample_cls.weight)
+        nn.init.zeros_(self.adapter_downsample_cls.bias)
+
+        nn.init.zeros_(self.adapter_upsample_cls.weight)
+        nn.init.zeros_(self.adapter_upsample_cls.bias)
 
     def forward(self, x):
         x = x + self.drop_path(self.attn(self.norm1(x)))
@@ -344,81 +355,6 @@ class TransformerPromptEncoderLayerI(nn.Module):
             if _ == self.prompt_layer:
                 y = x[:,-self.num_group:]
                 prompt = self.cls(y.permute(0, 2, 1), pos[:,-self.num_group:,:])
-                x = torch.cat((x[:,:1,:], prompt, x[:,-self.num_group:,:]), dim=1)
-                pos = torch.cat((pos[:,:1,:], pos_prompt, pos[:,-self.num_group:,:]), dim=1)
-            x = block(x+pos)
-        return x
-
-
-
-class TransformerPromptEncoderLayerIOld(nn.Module):
-    def __init__(self, embed_dim=768, depth=4, num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None,
-                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0., num_group=None, prompt_layer=None, prompt_module = None):
-        super().__init__()
-        self.trans_dim = embed_dim
-        self.num_group = num_group
-        self.depth = depth
-        self.prompt_layer = prompt_layer
-        self.blocks = nn.ModuleList([
-            Block(
-                dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
-                drop=drop_rate, attn_drop=attn_drop_rate,
-                drop_path=drop_path_rate[i] if isinstance(drop_path_rate, list) else drop_path_rate
-            )
-            for i in range(depth)])
-
-        if prompt_module == "transformer":
-            self.dgcnn_cls = TransFormerLayerView(trans_dim=embed_dim,depth=1,num_heads=num_heads,dpr=drop_path_rate)
-        elif prompt_module == "dgcnn":
-            class Args:
-                def __init__(self):
-                    self.k = 20
-                    self.emb_dims = 1024
-                    self.dropout = 0.5
-                    self.leaky_relu = 1
-
-            args = Args()
-            self.dgcnn_cls = DGCNNView(args, self.trans_dim)
-        elif prompt_module == "dgcnn_light":
-            class Args:
-                def __init__(self):
-                    self.k = 20
-                    self.emb_dims = 1024
-                    self.dropout = 0.5
-                    self.leaky_relu = 1
-
-            args = Args()
-            self.dgcnn_cls = DGCNNViewLight(args, self.trans_dim)
-
-        elif prompt_module == "dgcnn_light2":
-            class Args:
-                def __init__(self):
-                    self.k = 20
-                    self.emb_dims = 1024
-                    self.dropout = 0.5
-                    self.leaky_relu = 1
-
-            args = Args()
-            self.dgcnn_cls = DGCNNViewLight2(args, self.trans_dim)
-        elif prompt_module == "mlp":
-            class Args:
-                def __init__(self):
-                    self.k = 20
-                    self.emb_dims = 1024
-                    self.dropout = 0.5
-                    self.leaky_relu = 1
-
-            args = Args()
-            self.dgcnn_cls = DGCNNViewMLP(args, self.trans_dim)
-
-
-    def forward(self, x, pos):
-        pos_prompt = pos[:,1:2,:]
-        pos = torch.cat((pos[:,:1, :], pos[:,2:,:]),dim=1)
-        for _, block in enumerate(self.blocks):
-            if _ == self.prompt_layer:
-                y = x[:,-self.num_group:]
-                prompt = self.dgcnn_cls(y.permute(0, 2, 1), pos[:,-self.num_group:,:])
                 x = torch.cat((x[:,:1,:], prompt, x[:,-self.num_group:,:]), dim=1)
                 pos = torch.cat((pos[:,:1,:], pos_prompt, pos[:,-self.num_group:,:]), dim=1)
             x = block(x+pos)
@@ -990,7 +926,7 @@ class PointTransformer(nn.Module):
         )
 
         dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth)]
-        # self.blocks = TransformerPromptEncoderLayerIOld(
+
         self.blocks = TransformerPromptEncoderLayerI(
             embed_dim=self.trans_dim,
             depth=self.depth,
