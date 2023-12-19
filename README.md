@@ -7,6 +7,7 @@ This repository provides the official implementation of [**Instance-aware Dynami
 
 
 ## 📨 News
+- **[2023.12.10]** 🔥 Our paper **Point-FEMAE ([github](https://github.com/zyh16143998882/AAAI24-PointFEMAE))** has been accepted by **AAAI 2024**! 🎉🎉 Many thanks to all the collaborators and anonymous reviewers! 🤓
 - **[2023.07.18]** 🔥 Release the code and instructions. 🤓
 - **[2023.07.14]** 🔥 Our paper IDPT has been accepted by **ICCV 2023**! 🎉🎉 Many thanks to all the collaborators and anonymous reviewers! 🥰
 
@@ -228,7 +229,16 @@ CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/finetune_scan_hardest_idpt.y
 
 ```python
 # CUDA_VISIBLE_DEVICES=<GPU> python main.py --config cfgs/fewshot_vpt.yaml --finetune_model --ckpts <path/to/pre-trained/model> --exp_name <output_file_name> --way <5 or 10> --shot <10 or 20> --fold <0-9>
-CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/fewshot_vpt.yaml --finetune_model --ckpts ./checkpoint/pretrain/mae/ckpt-last.pth --exp_name fewshot_vpt --way 5 --shot 10 --fold 0
+for WAY in 5 10
+do
+  for SHOT in 10 20
+  do
+    for FOLD in $(seq 0 9)
+    do
+	  CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/fewshot_vpt.yaml --finetune_model --ckpts ./checkpoint/pretrain/mae/ckpt-last.pth --exp_name fewshot_vpt --way ${WAY} --shot ${SHOT} --fold ${FOLD}
+    done
+  done
+done
 ```
 </details>
 
@@ -236,7 +246,16 @@ CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/fewshot_vpt.yaml --finetune_
 
 ```python
 # CUDA_VISIBLE_DEVICES=<GPU> python main.py --config cfgs/fewshot_idpt.yaml --finetune_model --ckpts <path/to/pre-trained/model> --exp_name <output_file_name> --way <5 or 10> --shot <10 or 20> --fold <0-9>
-CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/fewshot_idpt.yaml --finetune_model --ckpts ./checkpoint/pretrain/mae/ckpt-last.pth --exp_name fewshot_idpt --way 5 --shot 10 --fold 0
+for WAY in 5 10
+do
+  for SHOT in 10 20
+  do
+    for FOLD in $(seq 0 9)
+    do
+	  CUDA_VISIBLE_DEVICES=0 python main.py --config cfgs/fewshot_idpt.yaml --finetune_model --ckpts ./checkpoint/pretrain/mae/ckpt-last.pth --exp_name fewshot_idpt --way ${WAY} --shot ${SHOT} --fold ${FOLD}
+    done
+  done
+done
 ```
 </details>
 
